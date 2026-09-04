@@ -276,6 +276,7 @@ const map = new maplibregl.Map({
   center: LAHORE_CENTRE,
   zoom: 11,
   minZoom: 9.5,
+  maxZoom: 22,              // the zoom slider's top end, stated rather than implied
   maxBounds: LAHORE_BOUNDS,   // the camera cannot leave this box
   maxPitch: 85,
   fadeDuration: 0,          // stop label cross-fades recomputing every frame
@@ -648,6 +649,7 @@ map.on("load", () => {
   map.on("idle", () => scheduleIndex(false));
 
   wireControls();
+  logAction("app", "map ready");
   buildRoute();
 });
 
@@ -703,6 +705,7 @@ const picked = { from: null, to: null };
 let pickMap = null, pickMarker = null, pickTarget = null, pickPoint = null;
 
 function openPicker(field){
+  logAction("pick", "open for " + field);
   pickTarget = field;
   pickPoint  = null;
   $("pickerTitle").textContent = field === "from"
@@ -779,6 +782,7 @@ async function usePick(){
   const field = pickTarget, point = pickPoint;
 
   picked[field] = point;
+  logAction("pick", field + " " + point[1].toFixed(5) + ", " + point[0].toFixed(5));
   $(field === "from" ? "pinFrom" : "pinTo").classList.add("set");
   $(field).value = point[1].toFixed(5) + ", " + point[0].toFixed(5);
   closePicker();
@@ -805,6 +809,7 @@ async function buildRoute(){
   }
 
   stop();
+  logAction("route", "build " + from + " -> " + to);
   $("build").disabled = true;
   setStatus("Looking up addresses\u2026");
 
@@ -842,8 +847,11 @@ async function buildRoute(){
     reset();
     $("play").disabled = false;
     $("reset").disabled = false;
+    logAction("route", "ready, " + (total / 1000).toFixed(2) + " km, "
+                       + path.length + " points");
     setStatus((total / 1000).toFixed(1) + " km route ready.");
   } catch (err) {
+    logAction("route", "failed: " + err.message);
     setStatus(err.message, true);
   } finally {
     $("build").disabled = false;
@@ -1003,6 +1011,7 @@ function steer(dt){
 
   if(!insideLahore(wanted)){
     carSpeed = 0;
+    logAction("limit", "reached the district boundary");
     setStatus("City limit. Turn around.", true);
     return;
   }
@@ -1051,6 +1060,7 @@ function frame(now){
     travelled = total;
     draw();
     stop();
+    logAction("drive", "arrived after " + (total / 1000).toFixed(2) + " km");
     setStatus("Arrived.");
     return;
   }
@@ -1064,12 +1074,14 @@ function play(){
   if(travelled >= total) travelled = 0;
   playing = true;
   CarSound.start();
+  logAction("drive", "start at " + (travelled / 1000).toFixed(2) + " km");
   $("play").textContent = "Pause";
   lastFrame = performance.now();
   requestAnimationFrame(frame);
 }
 
 function stop(){
+  if(playing) logAction("drive", "pause at " + (travelled / 1000).toFixed(2) + " km");
   playing = false;
   CarSound.stop();
   showGlow();
@@ -1078,6 +1090,7 @@ function stop(){
 
 function reset(){
   stop();
+  logAction("drive", "reset");
   travelled = 0;
   segIndex = 0;
   camCentre = null;
@@ -1092,6 +1105,7 @@ function setMode(next){
   if(mode === next) return;
   stop();
   mode = next;
+  logAction("mode", next === "route" ? "Nora self-drives" : "you drive");
 
   $("modeRoute").classList.toggle("on", next === "route");
   $("modeManual").classList.toggle("on", next === "manual");
@@ -1152,7 +1166,10 @@ function setMode(next){
 }
 
 function press(key, on){
+  if(held[key] === on) return;        // keydown repeats are not new actions
   held[key] = on;
+  logAction("input", { f:"throttle", b:"brake", l:"left", r:"right" }[key]
+                      + (on ? " down" : " up"));
   showGlow();
 }
 
@@ -1164,6 +1181,7 @@ function press(key, on){
 let shownGlow = -1;
 
 function toggleSettings(open){
+  if(open !== !$("settingsPop").hidden) logAction("settings", open ? "open" : "close");
   $("settingsPop").hidden = !open;
   $("settings").setAttribute("aria-expanded", String(open));
 }
@@ -1279,6 +1297,13 @@ function wireControls(){
     draw();
   });
 
+  $("speed").addEventListener("change", e =>
+    logAction("settings", "speed " + e.target.value + " km/h"));
+  $("zoom").addEventListener("change", e =>
+    logAction("settings", "zoom " + e.target.value));
+  $("volume").addEventListener("change", e =>
+    logAction("settings", "sound " + e.target.value + "%"));
+
   $("volume").addEventListener("input", e => {
     const pct = Number(e.target.value);
     $("volumeLabel").textContent = pct + "%";
@@ -1307,11 +1332,66 @@ function wireControls(){
   $("picker").addEventListener("click", e => {
     if(e.target === $("picker")) closePicker();   // the backdrop, not the sheet
   });
+  $("logClose").addEventListener("click", closeLog);
+  $("logRefresh").addEventListener("click", openLog);
+  $("logSheet").addEventListener("click", e => {
+    if(e.target === $("logSheet")) closeLog();
+  });
+
+  addEventListener("keydown", watchForLog);
   addEventListener("keydown", e => {
     if(e.key !== "Escape") return;
-    if(!$("picker").hidden) closePicker();
+    if(!$("logSheet").hidden) closeLog();
+    else if(!$("picker").hidden) closePicker();
     else toggleSettings(false);
   });
+}
+
+/* ------------------------------------------------------------------ *
+ *  The action log. Lines go to the main process, which owns the file;
+ *  this side cannot reach the disk. Reading it back is deliberately
+ *  undiscoverable: type "log" anywhere outside a text field.
+ * ------------------------------------------------------------------ */
+
+function logAction(what, detail){
+  if(!window.desktop || !window.desktop.log) return;
+  const stamp = new Date().toISOString();
+  window.desktop.log(stamp + "  " + what + (detail ? "  " + detail : ""));
+}
+
+async function openLog(){
+  $("logText").textContent = "Reading\u2026";
+  $("logPath").textContent = "";
+  $("logSheet").hidden = false;
+
+  if(!window.desktop || !window.desktop.readLog){
+    $("logText").textContent = "No log here: the page is running outside the app.";
+    return;
+  }
+  const { path, text, lines } = await window.desktop.readLog();
+  $("logText").textContent = text || "Nothing logged yet.";
+  $("logPath").textContent = lines ? lines + " lines \u00b7 " + path : path;
+  $("logText").scrollTop = $("logText").scrollHeight;
+}
+
+function closeLog(){
+  $("logSheet").hidden = true;
+}
+
+/* The word "log", typed a letter at a time, with nothing focused. */
+let typedKeys = "";
+
+function watchForLog(e){
+  const tag = e.target && e.target.tagName;
+  if(tag === "INPUT" || tag === "TEXTAREA") return;
+  if(e.metaKey || e.ctrlKey || e.altKey) return;
+  if(!e.key || e.key.length !== 1) return;
+
+  typedKeys = (typedKeys + e.key.toLowerCase()).slice(-3);
+  if(typedKeys === "log"){
+    typedKeys = "";
+    if($("logSheet").hidden) openLog();
+  }
 }
 
 let lastReadout = 0;

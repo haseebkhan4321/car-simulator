@@ -210,6 +210,16 @@ input[type=text]:focus{ outline:2px solid var(--amber); outline-offset:1px; bord
 .sheetHead{ border-bottom:1px solid var(--line); font-size:14px; font-weight:500; }
 .sheetFoot{ border-top:1px solid var(--line); }
 #pickMap{ height:min(52vh, 430px); }
+
+.logBody{
+  margin:0; padding:12px 14px;
+  max-height:min(56vh, 460px); overflow:auto;
+  background:#0E1319; color:var(--text);
+  font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size:11.5px; line-height:1.6;
+  white-space:pre-wrap; word-break:break-word;
+}
+#logPath{ font-size:11px; }
 #pickMap .maplibregl-canvas{ cursor:crosshair; }
 
 .maplibregl-ctrl-attrib{ font-size:11px; }

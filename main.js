@@ -8,7 +8,7 @@
  *  https from four keyless services, listed in ALLOWED_HOSTS.
  * ------------------------------------------------------------------ */
 
-const { app, BrowserWindow, Menu, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, session, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -25,6 +25,47 @@ const ALLOWED_HOSTS = new Set([
   "fonts.googleapis.com",
   "fonts.gstatic.com",
 ]);
+
+/* --------------------------- the action log --------------------------- */
+
+/* The renderer is sandboxed and has no filesystem, so it hands lines
+   over and this end writes them. One file, appended to, rotated once it
+   gets big so it cannot grow without limit. */
+
+const logFile = path.join(app.getPath("userData"), "actions.log");
+const LOG_MAX = 2 * 1024 * 1024;
+
+function writeLog(line){
+  fs.appendFile(logFile, line + "\n", () => {});
+}
+
+function rotateLog(){
+  try{
+    if(fs.statSync(logFile).size > LOG_MAX){
+      fs.renameSync(logFile, logFile + ".1");
+    }
+  }catch{ /* no file yet, which is the normal first run */ }
+}
+
+function wireLog(){
+  rotateLog();
+  writeLog(new Date().toISOString() + "  app  started " + app.getVersion());
+
+  ipcMain.on("log:append", (_e, line) => {
+    if(typeof line === "string" && line) writeLog(line.slice(0, 2000));
+  });
+
+  /* The viewer only ever shows the tail; the file keeps everything. */
+  ipcMain.handle("log:read", async () => {
+    try{
+      const text = await fs.promises.readFile(logFile, "utf8");
+      const lines = text.trimEnd().split("\n");
+      return { path: logFile, text: lines.slice(-400).join("\n"), lines: lines.length };
+    }catch{
+      return { path: logFile, text: "", lines: 0 };
+    }
+  });
+}
 
 /* ---------------------- window size, remembered ---------------------- */
 
@@ -192,6 +233,7 @@ if(!app.requestSingleInstanceLock()){
 
   app.whenReady().then(() => {
     hardenSession();
+    wireLog();
     buildMenu();
     createWindow();
 
@@ -202,6 +244,10 @@ if(!app.requestSingleInstanceLock()){
 
   app.on("window-all-closed", () => {
     if(!IS_MAC) app.quit();
+  });
+
+  app.on("before-quit", () => {
+    writeLog(new Date().toISOString() + "  app  quit");
   });
 
   /* Nothing in the renderer should ever ask for a node module or a
