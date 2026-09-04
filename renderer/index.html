@@ -239,7 +239,17 @@
     </div>
     <div class="saved"><span class="k">Saved</span><span class="v" id="costSaved">Rs 0.00</span></div>
   </div>
-  <p class="rates">Rates are per kilometre. Change them in settings.</p>
+  <p class="rates">Rates are per kilometre. Change them in settings.
+    <button class="infoBtn" id="costInfo" type="button"
+            aria-label="How the cost is worked out">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.9"/>
+        <circle cx="12" cy="7.4" r="1.25" fill="currentColor"/>
+        <rect x="11" y="10.4" width="2" height="7" rx="1" fill="currentColor"/>
+      </svg>
+      How this is worked out
+    </button>
+  </p>
 </div>
 
 
@@ -292,6 +302,30 @@
     <div class="sheetFoot">
       <span class="status" id="unlockStatus" style="margin:0"></span>
       <button class="btn primary" id="unlockGo" type="button">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="formulaSheet" hidden>
+  <div class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="formulaTitle">
+    <div class="sheetHead">
+      <span id="formulaTitle">How the cost is worked out</span>
+      <button class="btn" id="formulaClose" type="button">Close</button>
+    </div>
+    <div class="sheetBody">
+      <p class="note">Cost is distance driven multiplied by the rate per
+        kilometre. Nothing else goes into it: no standing charge, no fare
+        minimum, and no allowance for traffic or time.</p>
+
+      <div class="cost formula">
+        <div><span class="k">Distance so far</span><span class="v" id="fDist">0.00 km</span></div>
+        <div class="nora"><span class="k" id="fNoraSum">&nbsp;</span><span class="v" id="fNora">Rs 0.00</span></div>
+        <div><span class="k" id="fPetrolSum">&nbsp;</span><span class="v" id="fPetrol">Rs 0.00</span></div>
+        <div class="saved"><span class="k" id="fSavedSum">&nbsp;</span><span class="v" id="fSaved">Rs 0.00</span></div>
+      </div>
+    </div>
+    <div class="sheetFoot">
+      <span class="status" id="formulaNote" style="margin:0"></span>
     </div>
   </div>
 </div>

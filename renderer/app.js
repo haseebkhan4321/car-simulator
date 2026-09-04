@@ -1447,6 +1447,40 @@ function showRates(){
   updateCost(distanceSoFar());
 }
 
+/* The working behind the three figures, filled in with the distance and
+   rates actually in use rather than the defaults, so it explains this
+   drive and not a worked example. */
+function openFormula(){
+  const km     = distanceSoFar() / 1000;
+  const nora   = km * rateNora;
+  const petrol = km * ratePetrol;
+  const rs     = v => "Rs " + v.toFixed(2);
+
+  $("fDist").textContent = km.toFixed(2) + " km";
+
+  $("fNoraSum").textContent = km.toFixed(2) + " km \u00d7 Rs "
+                              + trimRate(rateNora) + "/km";
+  $("fNora").textContent = rs(nora);
+
+  $("fPetrolSum").textContent = km.toFixed(2) + " km \u00d7 Rs "
+                                + trimRate(ratePetrol) + "/km";
+  $("fPetrol").textContent = rs(petrol);
+
+  $("fSavedSum").textContent = rs(petrol) + " \u2212 " + rs(nora);
+  $("fSaved").textContent = rs(petrol - nora);
+
+  $("formulaNote").textContent = km > 0
+    ? ""
+    : "Nothing driven yet, so every figure is zero.";
+
+  $("formulaSheet").hidden = false;
+  logAction("cost", "opened the working at " + km.toFixed(2) + " km");
+}
+
+function closeFormula(){
+  $("formulaSheet").hidden = true;
+}
+
 function savedRate(id, fallback){
   try{
     const saved = Number(localStorage.getItem(id));
@@ -1552,6 +1586,12 @@ function wireControls(){
   // No backdrop close and no Escape: the first run has to get through this.
   $("setupSheet").addEventListener("click", e => e.stopPropagation());
 
+  $("costInfo").addEventListener("click", openFormula);
+  $("formulaClose").addEventListener("click", closeFormula);
+  $("formulaSheet").addEventListener("click", e => {
+    if(e.target === $("formulaSheet")) closeFormula();
+  });
+
   $("resetPw").addEventListener("click", openReset);
   $("resetGo").addEventListener("click", saveNewPassword);
   $("resetCancel").addEventListener("click", closeReset);
@@ -1593,6 +1633,7 @@ function wireControls(){
     if(e.key !== "Escape") return;
     if(!$("setupSheet").hidden) return;    // nothing to do but set one
     if(!$("logSheet").hidden) closeLog();
+    else if(!$("formulaSheet").hidden) closeFormula();
     else if(!$("resetSheet").hidden) closeReset();
     else if(!$("unlockSheet").hidden) closeUnlock();
     else if(!$("picker").hidden) closePicker();

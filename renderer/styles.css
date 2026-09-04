@@ -186,6 +186,21 @@ input[type=text]:focus, input[type=number]:focus, input[type=password]:focus{
 .cost .saved .v{ font-size:15px; font-weight:600; color:#5FCB8B; }
 .rates{ font-size:11px; color:var(--muted); margin:8px 0 0; line-height:1.5; }
 
+.infoBtn{
+  display:inline-flex; align-items:center; gap:4px;
+  background:none; border:0; padding:0; margin:1px 0 0;
+  font:inherit; color:var(--muted); cursor:pointer;
+  text-decoration:underline; text-underline-offset:2px;
+  text-decoration-color:var(--line);
+}
+.infoBtn svg{ width:12px; height:12px; }
+.infoBtn:hover{ color:var(--text); text-decoration-color:currentColor; }
+.infoBtn:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; border-radius:3px; }
+
+/* The same rows as the panel, without the panel's dividing line. */
+.cost.formula{ margin-top:0; border-top:0; padding-top:0; }
+.cost.formula .k{ font-variant-numeric:tabular-nums; }
+
 /* The rates are live inputs dressed as text: they look like part of the
    label until you hover or focus one, so the row still reads as a
    figure rather than a form. */
