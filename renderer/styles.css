@@ -90,6 +90,37 @@ input[type=text]:focus{ outline:2px solid var(--amber); outline-offset:1px; bord
 
 .modes{ display:flex; gap:6px; margin-bottom:14px; }
 .mode{ flex:1; padding:7px 4px; font-size:12px; }
+
+/* Settings: a gear at the panel's top left, and the sliders it opens.
+   The popover hangs off the top of the panel rather than floating free,
+   so it stays put when the panel changes height. */
+.btn.icon{
+  flex:0 0 auto; width:32px; padding:0;
+  display:grid; place-items:center;
+  color:var(--muted);
+}
+.btn.icon svg{ width:16px; height:16px; }
+.btn.icon:hover{ color:var(--text); }
+.btn.icon[aria-expanded="true"]{
+  background:var(--amber-dim); border-color:var(--amber); color:#FFD79A;
+}
+
+.popover{
+  position:absolute; z-index:6;
+  left:0; bottom:100%; margin-bottom:8px;
+  width:100%;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:0 12px 40px rgba(0,0,0,.5);
+  padding:14px 16px 16px;
+}
+.popHead{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin-bottom:4px;
+  font-size:13px; font-weight:500;
+}
+.popHead .btn{ padding:4px 10px; font-size:12px; }
 .mode.on{ background:var(--amber-dim); border-color:var(--amber); color:#FFD79A; }
 
 /* ---------- steering wheel ---------- */

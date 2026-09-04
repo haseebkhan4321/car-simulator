@@ -1163,6 +1163,11 @@ function press(key, on){
    which is also how the car behaves. */
 let shownGlow = -1;
 
+function toggleSettings(open){
+  $("settingsPop").hidden = !open;
+  $("settings").setAttribute("aria-expanded", String(open));
+}
+
 function showGlow(){
   const glow  = $("wheelGlow");
   const top   = setSpeed();
@@ -1287,6 +1292,14 @@ function wireControls(){
     $(id).addEventListener("input", () => forgetPick(id));
   });
 
+  $("settings").addEventListener("click", e => {
+    e.stopPropagation();          // the outside-click handler is next
+    toggleSettings($("settingsPop").hidden);
+  });
+  $("settingsClose").addEventListener("click", () => toggleSettings(false));
+  $("settingsPop").addEventListener("click", e => e.stopPropagation());
+  addEventListener("click", () => toggleSettings(false));
+
   $("pinFrom").addEventListener("click", () => openPicker("from"));
   $("pinTo").addEventListener("click", () => openPicker("to"));
   $("pickClose").addEventListener("click", closePicker);
@@ -1295,7 +1308,9 @@ function wireControls(){
     if(e.target === $("picker")) closePicker();   // the backdrop, not the sheet
   });
   addEventListener("keydown", e => {
-    if(e.key === "Escape" && !$("picker").hidden) closePicker();
+    if(e.key !== "Escape") return;
+    if(!$("picker").hidden) closePicker();
+    else toggleSettings(false);
   });
 }
 
