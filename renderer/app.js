@@ -1185,21 +1185,23 @@ let shownGlow = -1;
 
 /* ------------------------------------------------------------------ *
  *  The admin password. Set on the first run after installing, and asked
- *  for once per session before the settings will open. Driving never
- *  needs it. The password is checked by the main process, which holds
- *  the hash; nothing here ever sees it.
+ *  for every time the settings are opened, including straight after
+ *  setting it: there is no session to remember, so nothing to leave
+ *  standing open. Driving never needs it. The password is checked by the
+ *  main process, which holds the hash; nothing here ever sees it.
  *
  *  Outside the app there is no bridge to ask, and a page with no way to
  *  check a password must not lock its own settings away, so it opens.
  * ------------------------------------------------------------------ */
 
-let adminUnlocked = false;
+/* True only when there is no bridge to check a password against. */
+let gateOff = false;
 
 const noBridge = () => !window.desktop || !window.desktop.adminStatus;
 
 async function guardSettings(){
   if(noBridge()){
-    adminUnlocked = true;
+    gateOff = true;
     return;
   }
   const { set } = await window.desktop.adminStatus();
@@ -1238,8 +1240,6 @@ async function setPassword(){
     return;
   }
 
-  /* Whoever just chose it does not need to type it again straight away. */
-  adminUnlocked = true;
   $("pwNew").value = $("pwAgain").value = "";
   $("setupSheet").hidden = true;
   logAction("admin", "password set");
@@ -1271,10 +1271,62 @@ async function tryUnlock(){
     return;
   }
 
-  adminUnlocked = true;
   closeUnlock();
   toggleSettings(true);
   logAction("admin", "settings unlocked");
+}
+
+function openReset(){
+  $("pwOld").value = $("pwReset").value = $("pwResetAgain").value = "";
+  $("resetStatus").textContent = "";
+  $("resetStatus").classList.remove("error");
+  $("resetSheet").hidden = false;
+  $("pwOld").focus();
+}
+
+function closeReset(){
+  $("resetSheet").hidden = true;
+}
+
+function sayReset(msg, isError){
+  const el = $("resetStatus");
+  el.textContent = msg || "";
+  el.classList.toggle("error", !!isError);
+}
+
+/* The current password is asked for again here and checked by the main
+   process. Having the settings open is not taken as proof of anything. */
+async function saveNewPassword(){
+  const current = $("pwOld").value;
+  const next    = $("pwReset").value;
+  const again   = $("pwResetAgain").value;
+  const { minLength } = await window.desktop.adminStatus();
+
+  if(next.length < minLength){
+    sayReset("At least " + minLength + " characters.", true);
+    $("pwReset").focus();
+    return;
+  }
+  if(next !== again){
+    sayReset("Those two do not match.", true);
+    $("pwResetAgain").focus();
+    $("pwResetAgain").select();
+    return;
+  }
+
+  sayReset("Saving\u2026");
+  const { ok, why } = await window.desktop.adminReset(current, next);
+  if(!ok){
+    sayReset(why === "wrong"
+      ? "That is not the current password."
+      : "Could not save it" + (why ? " (" + why + ")" : "") + ".", true);
+    if(why === "wrong"){ $("pwOld").focus(); $("pwOld").select(); }
+    logAction("admin", "reset refused: " + (why || "unknown"));
+    return;
+  }
+
+  closeReset();
+  logAction("admin", "password reset");
 }
 
 /* The gear either opens the settings or asks for the password first. */
@@ -1283,7 +1335,7 @@ function askForSettings(){
     toggleSettings(false);
     return;
   }
-  if(adminUnlocked) toggleSettings(true);
+  if(gateOff) toggleSettings(true);
   else openUnlock();
 }
 
@@ -1500,6 +1552,18 @@ function wireControls(){
   // No backdrop close and no Escape: the first run has to get through this.
   $("setupSheet").addEventListener("click", e => e.stopPropagation());
 
+  $("resetPw").addEventListener("click", openReset);
+  $("resetGo").addEventListener("click", saveNewPassword);
+  $("resetCancel").addEventListener("click", closeReset);
+  ["pwOld", "pwReset", "pwResetAgain"].forEach(id =>
+    $(id).addEventListener("keydown", e => {
+      if(e.key === "Enter") saveNewPassword();
+    }));
+  $("resetSheet").addEventListener("click", e => {
+    e.stopPropagation();          // else the click would shut the settings
+    if(e.target === $("resetSheet")) closeReset();
+  });
+
   $("unlockGo").addEventListener("click", tryUnlock);
   $("unlockCancel").addEventListener("click", closeUnlock);
   $("pwCheck").addEventListener("keydown", e => { if(e.key === "Enter") tryUnlock(); });
@@ -1529,6 +1593,7 @@ function wireControls(){
     if(e.key !== "Escape") return;
     if(!$("setupSheet").hidden) return;    // nothing to do but set one
     if(!$("logSheet").hidden) closeLog();
+    else if(!$("resetSheet").hidden) closeReset();
     else if(!$("unlockSheet").hidden) closeUnlock();
     else if(!$("picker").hidden) closePicker();
     else toggleSettings(false);

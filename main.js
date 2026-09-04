@@ -119,6 +119,34 @@ function wireAdmin(){
     return { ok: true };
   });
 
+  /* Changing the password needs the current one, checked here. The page
+     is never trusted to say it has already authenticated. */
+  ipcMain.handle("admin:reset", (_e, current, next) => {
+    const saved = readAdmin();
+    if(!saved) return { ok: false, why: "none set" };
+    if(typeof next !== "string" || next.length < MIN_PASSWORD){
+      return { ok: false, why: "short" };
+    }
+
+    const given = Buffer.from(hashPassword(String(current), saved.salt), "hex");
+    const want  = Buffer.from(saved.hash, "hex");
+    if(!(given.length === want.length && crypto.timingSafeEqual(given, want))){
+      writeLog(new Date().toISOString() + "  admin  reset refused, wrong password");
+      return { ok: false, why: "wrong" };
+    }
+
+    try{
+      const salt = crypto.randomBytes(16).toString("hex");
+      fs.writeFileSync(adminFile, JSON.stringify({
+        salt, hash: hashPassword(next, salt), iterations: KDF.iterations,
+      }));
+    }catch{
+      return { ok: false, why: "could not save" };
+    }
+    writeLog(new Date().toISOString() + "  admin  password reset");
+    return { ok: true };
+  });
+
   ipcMain.handle("admin:check", (_e, password) => {
     const saved = readAdmin();
     if(!saved || typeof password !== "string") return { ok: false };

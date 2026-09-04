@@ -16,9 +16,12 @@ contextBridge.exposeInMainWorld("desktop", {
   readLog: () => ipcRenderer.invoke("log:read"),
 
   /* The admin password. The page can ask whether one is set, set the
-     first one, and have a guess checked. It never receives the stored
-     hash, and there is no call to read or clear it. */
+     first one, have a guess checked, and change it by supplying the
+     current one. It never receives the stored hash, and there is no call
+     to read or clear it. */
   adminStatus: () => ipcRenderer.invoke("admin:status"),
   adminSet: password => ipcRenderer.invoke("admin:set", String(password)),
   adminCheck: password => ipcRenderer.invoke("admin:check", String(password)),
+  adminReset: (current, next) =>
+    ipcRenderer.invoke("admin:reset", String(current), String(next)),
 });

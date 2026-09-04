@@ -91,6 +91,12 @@
         <input type="number" id="ratePetrol" min="0" max="999" step="0.5" value="20">
       </div>
     </div>
+
+    <div class="rule"></div>
+
+    <div class="row">
+      <button class="btn" id="resetPw" type="button">Reset password</button>
+    </div>
   </div>
 
   <div class="wheelWrap">
@@ -286,6 +292,29 @@
     <div class="sheetFoot">
       <span class="status" id="unlockStatus" style="margin:0"></span>
       <button class="btn primary" id="unlockGo" type="button">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="resetSheet" hidden>
+  <div class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+    <div class="sheetHead">
+      <span id="resetTitle">Reset password</span>
+      <button class="btn" id="resetCancel" type="button">Cancel</button>
+    </div>
+    <div class="sheetBody">
+      <label for="pwOld">Current password</label>
+      <input type="password" id="pwOld" autocomplete="current-password">
+
+      <label for="pwReset">New password</label>
+      <input type="password" id="pwReset" autocomplete="new-password">
+
+      <label for="pwResetAgain">New password again</label>
+      <input type="password" id="pwResetAgain" autocomplete="new-password">
+    </div>
+    <div class="sheetFoot">
+      <span class="status" id="resetStatus" style="margin:0"></span>
+      <button class="btn primary" id="resetGo" type="button">Save password</button>
     </div>
   </div>
 </div>
