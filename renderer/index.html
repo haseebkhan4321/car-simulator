@@ -206,11 +206,23 @@
   <div class="track"><span id="bar"></span></div>
 
   <div class="cost">
-    <div class="nora"><span class="k">Nora</span><span class="v" id="costNora">Rs 0.00</span></div>
-    <div><span class="k">Petrol car</span><span class="v" id="costPetrol">Rs 0.00</span></div>
+    <div class="nora">
+      <span class="k">Nora
+        <span class="rate">Rs <input type="number" id="rateNora" min="0" max="999"
+              step="0.05" value="3.95" aria-label="Nora, rupees per kilometre">/km</span>
+      </span>
+      <span class="v" id="costNora">Rs 0.00</span>
+    </div>
+    <div>
+      <span class="k">Petrol car
+        <span class="rate">Rs <input type="number" id="ratePetrol" min="0" max="999"
+              step="0.5" value="20" aria-label="Petrol car, rupees per kilometre">/km</span>
+      </span>
+      <span class="v" id="costPetrol">Rs 0.00</span>
+    </div>
     <div class="saved"><span class="k">Saved</span><span class="v" id="costSaved">Rs 0.00</span></div>
   </div>
-  <p class="rates">Nora Rs 3.95/km against Rs 20.00/km for a petrol car.</p>
+  <p class="rates">Click either rate to change it.</p>
 </div>
 
 

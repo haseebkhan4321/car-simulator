@@ -183,6 +183,27 @@ input[type=text]:focus{ outline:2px solid var(--amber); outline-offset:1px; bord
 .cost .saved .v{ font-size:15px; font-weight:600; color:#5FCB8B; }
 .rates{ font-size:11px; color:var(--muted); margin:8px 0 0; line-height:1.5; }
 
+/* The rates are live inputs dressed as text: they look like part of the
+   label until you hover or focus one, so the row still reads as a
+   figure rather than a form. */
+.cost .rate{ font-size:11px; color:var(--muted); white-space:nowrap; }
+.cost .nora .rate{ color:var(--amber); opacity:.8; }
+.cost .rate input{
+  width:44px; padding:1px 3px; margin:0;
+  background:transparent; color:inherit;
+  border:1px solid transparent; border-radius:4px;
+  font:inherit; text-align:right;
+  font-variant-numeric:tabular-nums;
+  appearance:none; -webkit-appearance:none;
+}
+.cost .rate input::-webkit-inner-spin-button,
+.cost .rate input::-webkit-outer-spin-button{ -webkit-appearance:none; margin:0; }
+.cost .rate input:hover{ border-color:var(--line); background:#0E1319; }
+.cost .rate input:focus{
+  outline:2px solid var(--amber); outline-offset:0;
+  border-color:transparent; background:#0E1319;
+}
+
 .car{ width:30px; height:48px; }
 .car svg{ display:block; filter:drop-shadow(0 3px 5px rgba(0,0,0,.45)); }
 

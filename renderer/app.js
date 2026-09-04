@@ -39,9 +39,11 @@ const held = { f:false, b:false, l:false, r:false };
 const REVERSE_CAP = 8;
 const ACCEL = 11, BRAKE = 22, COAST = 5, TURN_RATE = 105;
 
-/* Running cost, rupees per kilometre. */
-const RATE_NORA   = 3.95;
-const RATE_PETROL = 20.00;
+/* Running cost, rupees per kilometre. Both are editable in the panel
+   and kept for next time, so they are variables with defaults rather
+   than constants. */
+let rateNora   = 3.95;
+let ratePetrol = 20.00;
 
 /* The wheel is two things at once. steerCmd is the instruction, set by
    your hand or the arrow keys, running from -1 to 1. wheelAngle is the
@@ -910,8 +912,8 @@ function aimCamera(position, heading){
 
 function updateCost(metres){
   const km = metres / 1000;
-  const nora = km * RATE_NORA;
-  const petrol = km * RATE_PETROL;
+  const nora = km * rateNora;
+  const petrol = km * ratePetrol;
   $("costNora").textContent   = "Rs " + nora.toFixed(2);
   $("costPetrol").textContent = "Rs " + petrol.toFixed(2);
   $("costSaved").textContent  = "Rs " + (petrol - nora).toFixed(2);
@@ -1253,6 +1255,8 @@ function wirePad(){
   })[e.key];
 
   addEventListener("keydown", e => {
+    const tag = e.target && e.target.tagName;
+    if(tag === "INPUT" || tag === "TEXTAREA") return;   // typing, not driving
     const key = fromKey(e);
     if(!key || mode !== "manual") return;
     e.preventDefault();
@@ -1268,6 +1272,35 @@ function wirePad(){
   });
 }
 
+/* How far the car has gone, whichever mode it is in: what the cost is
+   worked out from, and what a changed rate has to be re-applied to. */
+function distanceSoFar(){
+  return mode === "manual" ? odometer : travelled;
+}
+
+function readRate(id, fallback){
+  const value = Number($(id).value);
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function applyRates(){
+  rateNora   = readRate("rateNora", rateNora);
+  ratePetrol = readRate("ratePetrol", ratePetrol);
+  updateCost(distanceSoFar());
+}
+
+function restoreRates(){
+  for(const [id, fallback] of [["rateNora", 3.95], ["ratePetrol", 20.00]]){
+    let value = fallback;
+    try{
+      const saved = Number(localStorage.getItem(id));
+      if(Number.isFinite(saved) && saved >= 0) value = saved;
+    }catch{ /* no storage here; the default stands */ }
+    $(id).value = value;
+  }
+  applyRates();
+}
+
 function restoreVolume(){
   let pct = 60;
   try{
@@ -1281,6 +1314,7 @@ function restoreVolume(){
 
 function wireControls(){
   restoreVolume();
+  restoreRates();
   $("modeRoute").addEventListener("click", () => setMode("route"));
   $("modeManual").addEventListener("click", () => setMode("manual"));
   wirePad();
@@ -1295,6 +1329,17 @@ function wireControls(){
   $("zoom").addEventListener("input", e => {
     $("zoomLabel").textContent = e.target.value;
     draw();
+  });
+
+  ["rateNora", "ratePetrol"].forEach(id => {
+    $(id).addEventListener("input", applyRates);
+    $(id).addEventListener("change", () => {
+      applyRates();
+      $(id).value = id === "rateNora" ? rateNora : ratePetrol;   // reject junk
+      try{ localStorage.setItem(id, $(id).value); }catch{ /* fine without it */ }
+      logAction("rate", (id === "rateNora" ? "Nora" : "petrol")
+                        + " Rs " + $(id).value + "/km");
+    });
   });
 
   $("speed").addEventListener("change", e =>
