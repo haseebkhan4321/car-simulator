@@ -43,7 +43,18 @@
     },
     "win": {
       "target": [
-        "nsis"
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "linux": {
@@ -51,6 +62,9 @@
         "AppImage"
       ],
       "category": "Game"
+    },
+    "portable": {
+      "artifactName": "Nora-in-Lahore-portable-${version}.exe"
     }
   },
   "allowScripts": {
