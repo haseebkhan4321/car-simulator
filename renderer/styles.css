@@ -52,13 +52,16 @@ label{ display:block; font-size:12px; color:var(--muted); margin:0 0 4px; }
 .pin:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
 .pin.set{ color:var(--amber); border-color:var(--amber-dim); }
 
-input[type=text]{
+input[type=text], input[type=number], input[type=password]{
   width:100%; padding:8px 10px; margin-bottom:9px;
   background:#0E1319; color:var(--text);
   border:1px solid var(--line); border-radius:6px;
   font:inherit; font-size:13px;
 }
-input[type=text]:focus{ outline:2px solid var(--amber); outline-offset:1px; border-color:transparent; }
+input[type=number]{ margin-bottom:0; font-variant-numeric:tabular-nums; }
+input[type=text]:focus, input[type=number]:focus, input[type=password]:focus{
+  outline:2px solid var(--amber); outline-offset:1px; border-color:transparent;
+}
 
 .btn{
   font:inherit; font-size:13px; font-weight:500;
@@ -188,32 +191,9 @@ input[type=text]:focus{ outline:2px solid var(--amber); outline-offset:1px; bord
    figure rather than a form. */
 .cost .rate{ font-size:11px; color:var(--muted); white-space:nowrap; }
 .cost .nora .rate{ color:var(--amber); opacity:.8; }
-/* The rate reads as text with a pencil beside it. Clicking either puts
-   an input in its place, already holding the value in use. */
-.rateBtn{
-  display:inline-flex; align-items:center; gap:3px;
-  background:none; border:0; padding:0; margin:0;
-  font:inherit; color:inherit; cursor:pointer; border-radius:3px;
-}
-.rateBtn svg{ width:10px; height:10px; fill:currentColor; opacity:.65; }
-.rateBtn:hover{ color:var(--text); }
-.cost .nora .rateBtn:hover{ color:#FFB03C; }
-.rateBtn:hover svg{ opacity:1; }
-.rateBtn:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
-
-/* The popup the pencil opens. */
-.sheet.narrow{ width:min(360px, 100%); }
-.sheetBody{ padding:14px 16px 4px; }
-.sheetBody input[type=number]{
-  width:100%; padding:8px 10px; margin:0 0 12px;
-  background:#0E1319; color:var(--text);
-  border:1px solid var(--line); border-radius:6px;
-  font:inherit; font-size:13px;
-  font-variant-numeric:tabular-nums;
-}
-.sheetBody input[type=number]:focus{
-  outline:2px solid var(--amber); outline-offset:1px; border-color:transparent;
-}
+/* The rates are entered in the settings popover, so they are read-only
+   figures here. */
+.cost .rate{ font-size:11px; }
 
 .car{ width:30px; height:48px; }
 .car svg{ display:block; filter:drop-shadow(0 3px 5px rgba(0,0,0,.45)); }
@@ -242,6 +222,15 @@ input[type=text]:focus{ outline:2px solid var(--amber); outline-offset:1px; bord
 .sheetHead{ border-bottom:1px solid var(--line); font-size:14px; font-weight:500; }
 .sheetFoot{ border-top:1px solid var(--line); }
 #pickMap{ height:min(52vh, 430px); }
+
+.sheet.narrow{ width:min(370px, 100%); }
+.sheetBody{ padding:14px 16px 6px; }
+.sheetBody label{ margin-top:2px; }
+.sheetBody input{ margin-bottom:12px; }
+.note{
+  font-size:12px; color:var(--muted);
+  margin:0 0 14px; line-height:1.55;
+}
 
 .logBody{
   margin:0; padding:12px 14px;

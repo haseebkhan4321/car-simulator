@@ -9,6 +9,7 @@
  * ------------------------------------------------------------------ */
 
 const { app, BrowserWindow, Menu, ipcMain, session, shell } = require("electron");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -64,6 +65,73 @@ function wireLog(){
     }catch{
       return { path: logFile, text: "", lines: 0 };
     }
+  });
+}
+
+/* --------------------------- admin password --------------------------- */
+
+/* Set once, on the first run after installing, and asked for again
+   before the settings will open. The password itself is never stored:
+   what goes in the file is a PBKDF2 hash and the random salt it was
+   derived with, so the file tells an onlooker nothing useful. This
+   guards the app's own settings; it has no bearing on the machine. */
+
+const adminFile = path.join(app.getPath("userData"), "admin.json");
+const KDF = { iterations: 120000, keylen: 32, digest: "sha256" };
+const MIN_PASSWORD = 6;
+
+function readAdmin(){
+  try{
+    const saved = JSON.parse(fs.readFileSync(adminFile, "utf8"));
+    if(saved && typeof saved.salt === "string" && typeof saved.hash === "string"){
+      return saved;
+    }
+  }catch{ /* missing or damaged counts as never set */ }
+  return null;
+}
+
+function hashPassword(password, salt){
+  return crypto
+    .pbkdf2Sync(password, salt, KDF.iterations, KDF.keylen, KDF.digest)
+    .toString("hex");
+}
+
+function wireAdmin(){
+  ipcMain.handle("admin:status", () => ({
+    set: !!readAdmin(),
+    minLength: MIN_PASSWORD,
+  }));
+
+  ipcMain.handle("admin:set", (_e, password) => {
+    if(typeof password !== "string" || password.length < MIN_PASSWORD){
+      return { ok: false, why: "short" };
+    }
+    if(readAdmin()) return { ok: false, why: "already set" };
+    try{
+      const salt = crypto.randomBytes(16).toString("hex");
+      fs.writeFileSync(adminFile, JSON.stringify({
+        salt, hash: hashPassword(password, salt), iterations: KDF.iterations,
+      }));
+    }catch(err){
+      return { ok: false, why: "could not save" };
+    }
+    writeLog(new Date().toISOString() + "  admin  password set");
+    return { ok: true };
+  });
+
+  ipcMain.handle("admin:check", (_e, password) => {
+    const saved = readAdmin();
+    if(!saved || typeof password !== "string") return { ok: false };
+
+    /* Compared over the full length either way, so a wrong password
+       cannot be narrowed down by how long the check took. */
+    const given = Buffer.from(hashPassword(password, saved.salt), "hex");
+    const want  = Buffer.from(saved.hash, "hex");
+    const ok = given.length === want.length && crypto.timingSafeEqual(given, want);
+
+    writeLog(new Date().toISOString()
+             + "  admin  " + (ok ? "unlocked settings" : "wrong password"));
+    return { ok };
   });
 }
 
@@ -234,6 +302,7 @@ if(!app.requestSingleInstanceLock()){
   app.whenReady().then(() => {
     hardenSession();
     wireLog();
+    wireAdmin();
     buildMenu();
     createWindow();
 

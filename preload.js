@@ -14,4 +14,11 @@ contextBridge.exposeInMainWorld("desktop", {
      cannot reach the file itself, or anything else on disk. */
   log: line => ipcRenderer.send("log:append", String(line)),
   readLog: () => ipcRenderer.invoke("log:read"),
+
+  /* The admin password. The page can ask whether one is set, set the
+     first one, and have a guess checked. It never receives the stored
+     hash, and there is no call to read or clear it. */
+  adminStatus: () => ipcRenderer.invoke("admin:status"),
+  adminSet: password => ipcRenderer.invoke("admin:set", String(password)),
+  adminCheck: password => ipcRenderer.invoke("admin:check", String(password)),
 });

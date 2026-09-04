@@ -651,6 +651,7 @@ map.on("load", () => {
   map.on("idle", () => scheduleIndex(false));
 
   wireControls();
+  guardSettings();
   logAction("app", "map ready");
   buildRoute();
 });
@@ -1182,6 +1183,110 @@ function press(key, on){
    which is also how the car behaves. */
 let shownGlow = -1;
 
+/* ------------------------------------------------------------------ *
+ *  The admin password. Set on the first run after installing, and asked
+ *  for once per session before the settings will open. Driving never
+ *  needs it. The password is checked by the main process, which holds
+ *  the hash; nothing here ever sees it.
+ *
+ *  Outside the app there is no bridge to ask, and a page with no way to
+ *  check a password must not lock its own settings away, so it opens.
+ * ------------------------------------------------------------------ */
+
+let adminUnlocked = false;
+
+const noBridge = () => !window.desktop || !window.desktop.adminStatus;
+
+async function guardSettings(){
+  if(noBridge()){
+    adminUnlocked = true;
+    return;
+  }
+  const { set } = await window.desktop.adminStatus();
+  if(!set){
+    $("setupSheet").hidden = false;
+    $("pwNew").focus();
+  }
+}
+
+function saySetup(msg, isError){
+  const el = $("setupStatus");
+  el.textContent = msg || "";
+  el.classList.toggle("error", !!isError);
+}
+
+async function setPassword(){
+  const first = $("pwNew").value, again = $("pwAgain").value;
+  const { minLength } = await window.desktop.adminStatus();
+
+  if(first.length < minLength){
+    saySetup("At least " + minLength + " characters.", true);
+    $("pwNew").focus();
+    return;
+  }
+  if(first !== again){
+    saySetup("Those two do not match.", true);
+    $("pwAgain").focus();
+    $("pwAgain").select();
+    return;
+  }
+
+  saySetup("Saving\u2026");
+  const { ok, why } = await window.desktop.adminSet(first);
+  if(!ok){
+    saySetup("Could not set it" + (why ? " (" + why + ")" : "") + ".", true);
+    return;
+  }
+
+  /* Whoever just chose it does not need to type it again straight away. */
+  adminUnlocked = true;
+  $("pwNew").value = $("pwAgain").value = "";
+  $("setupSheet").hidden = true;
+  logAction("admin", "password set");
+}
+
+function openUnlock(){
+  $("pwCheck").value = "";
+  $("unlockStatus").textContent = "";
+  $("unlockStatus").classList.remove("error");
+  $("unlockSheet").hidden = false;
+  $("pwCheck").focus();
+}
+
+function closeUnlock(){
+  $("unlockSheet").hidden = true;
+}
+
+async function tryUnlock(){
+  const el = $("unlockStatus");
+  el.textContent = "Checking\u2026";
+  el.classList.remove("error");
+
+  const { ok } = await window.desktop.adminCheck($("pwCheck").value);
+  if(!ok){
+    el.textContent = "That is not the password.";
+    el.classList.add("error");
+    $("pwCheck").select();
+    logAction("admin", "wrong password");
+    return;
+  }
+
+  adminUnlocked = true;
+  closeUnlock();
+  toggleSettings(true);
+  logAction("admin", "settings unlocked");
+}
+
+/* The gear either opens the settings or asks for the password first. */
+function askForSettings(){
+  if(!$("settingsPop").hidden){
+    toggleSettings(false);
+    return;
+  }
+  if(adminUnlocked) toggleSettings(true);
+  else openUnlock();
+}
+
 function toggleSettings(open){
   if(open !== !$("settingsPop").hidden) logAction("settings", open ? "open" : "close");
   $("settingsPop").hidden = !open;
@@ -1301,50 +1406,32 @@ function savedRate(id, fallback){
 function restoreRates(){
   rateNora   = savedRate("rateNora", 3.95);
   ratePetrol = savedRate("ratePetrol", 20.00);
-  showRates();
-}
-
-/* Entering a rate happens in the popup, never on the panel. Both boxes
-   open holding the rate already in use, so a change starts from the
-   previous value rather than from an empty field. */
-function openRates(focus){
   $("rateNora").value   = trimRate(rateNora);
   $("ratePetrol").value = trimRate(ratePetrol);
-  $("ratesStatus").textContent = "";
-  $("ratesStatus").classList.remove("error");
-  $("ratesSheet").hidden = false;
-  const el = $(focus === "ratePetrol" ? "ratePetrol" : "rateNora");
-  el.focus();
-  el.select();
-  logAction("rate", "open");
+  showRates();
 }
 
-function closeRates(){
-  $("ratesSheet").hidden = true;
+/* The rates are two fields in the settings popover, and they behave
+   like the sliders beside them: the figures follow as you type, and the
+   value is kept when you let go. A field that will not parse, or is
+   negative, snaps back to the rate in use. */
+function applyRate(id){
+  const value = Number($(id).value);
+  if(!Number.isFinite(value) || value < 0) return false;
+  if(id === "rateNora") rateNora = value;
+  else                  ratePetrol = value;
+  showRates();
+  return true;
 }
 
-function saveRates(){
-  const nora   = Number($("rateNora").value);
-  const petrol = Number($("ratePetrol").value);
-
-  const ok = v => Number.isFinite(v) && v >= 0;
-  if(!ok(nora) || !ok(petrol)){
-    $("ratesStatus").textContent = "Both rates need a number, zero or more.";
-    $("ratesStatus").classList.add("error");
+function commitRate(id){
+  if(!applyRate(id)){
+    $(id).value = trimRate(id === "rateNora" ? rateNora : ratePetrol);
     return;
   }
-
-  rateNora   = nora;
-  ratePetrol = petrol;
-  try{
-    localStorage.setItem("rateNora", String(nora));
-    localStorage.setItem("ratePetrol", String(petrol));
-  }catch{ /* fine without it, until the next launch */ }
-
-  logAction("rate", "Nora Rs " + trimRate(nora)
-                    + "/km, petrol Rs " + trimRate(petrol) + "/km");
-  showRates();
-  closeRates();
+  try{ localStorage.setItem(id, $(id).value); }catch{ /* fine without it */ }
+  logAction("rate", (id === "rateNora" ? "Nora" : "petrol")
+                    + " Rs " + $(id).value + "/km");
 }
 
 function restoreVolume(){
@@ -1377,15 +1464,10 @@ function wireControls(){
     draw();
   });
 
-  $("rateNoraBtn").addEventListener("click", () => openRates("rateNora"));
-  $("ratePetrolBtn").addEventListener("click", () => openRates("ratePetrol"));
-  $("ratesSave").addEventListener("click", saveRates);
-  $("ratesCancel").addEventListener("click", closeRates);
-  $("ratesSheet").addEventListener("click", e => {
-    if(e.target === $("ratesSheet")) closeRates();
+  ["rateNora", "ratePetrol"].forEach(id => {
+    $(id).addEventListener("input", () => applyRate(id));
+    $(id).addEventListener("change", () => commitRate(id));
   });
-  ["rateNora", "ratePetrol"].forEach(id =>
-    $(id).addEventListener("keydown", e => { if(e.key === "Enter") saveRates(); }));
 
   $("speed").addEventListener("change", e =>
     logAction("settings", "speed " + e.target.value + " km/h"));
@@ -1409,7 +1491,21 @@ function wireControls(){
 
   $("settings").addEventListener("click", e => {
     e.stopPropagation();          // the outside-click handler is next
-    toggleSettings($("settingsPop").hidden);
+    askForSettings();
+  });
+
+  $("setupSave").addEventListener("click", setPassword);
+  ["pwNew", "pwAgain"].forEach(id =>
+    $(id).addEventListener("keydown", e => { if(e.key === "Enter") setPassword(); }));
+  // No backdrop close and no Escape: the first run has to get through this.
+  $("setupSheet").addEventListener("click", e => e.stopPropagation());
+
+  $("unlockGo").addEventListener("click", tryUnlock);
+  $("unlockCancel").addEventListener("click", closeUnlock);
+  $("pwCheck").addEventListener("keydown", e => { if(e.key === "Enter") tryUnlock(); });
+  $("unlockSheet").addEventListener("click", e => {
+    e.stopPropagation();          // else the click would shut the settings again
+    if(e.target === $("unlockSheet")) closeUnlock();
   });
   $("settingsClose").addEventListener("click", () => toggleSettings(false));
   $("settingsPop").addEventListener("click", e => e.stopPropagation());
@@ -1431,8 +1527,9 @@ function wireControls(){
   addEventListener("keydown", watchForLog);
   addEventListener("keydown", e => {
     if(e.key !== "Escape") return;
+    if(!$("setupSheet").hidden) return;    // nothing to do but set one
     if(!$("logSheet").hidden) closeLog();
-    else if(!$("ratesSheet").hidden) closeRates();
+    else if(!$("unlockSheet").hidden) closeUnlock();
     else if(!$("picker").hidden) closePicker();
     else toggleSettings(false);
   });

@@ -78,6 +78,19 @@
         <input type="range" id="volume" min="0" max="100" step="5" value="60">
       </div>
     </div>
+
+    <div class="rule"></div>
+
+    <div class="row">
+      <div class="speed">
+        <label for="rateNora">Nora, Rs/km</label>
+        <input type="number" id="rateNora" min="0" max="999" step="0.05" value="3.95">
+      </div>
+      <div class="speed">
+        <label for="ratePetrol">Petrol, Rs/km</label>
+        <input type="number" id="ratePetrol" min="0" max="999" step="0.5" value="20">
+      </div>
+    </div>
   </div>
 
   <div class="wheelWrap">
@@ -208,37 +221,19 @@
   <div class="cost">
     <div class="nora">
       <span class="k">Nora
-        <span class="rate">Rs
-        <button class="rateBtn" id="rateNoraBtn" type="button" title="Edit rate"
-                aria-label="Edit the Nora rate, rupees per kilometre">
-          <span id="rateNoraText">3.95</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3 21l3.9-.9L19.5 7.5l-3-3L3.9 17.1 3 21z"/>
-            <path d="M17.9 3.1l3 3 1.2-1.2a1.9 1.9 0 0 0 0-2.7 1.9 1.9 0 0 0-2.7 0L17.9 3.1z"/>
-          </svg>
-        </button>
-        /km</span>
+        <span class="rate">Rs <span id="rateNoraText">3.95</span>/km</span>
       </span>
       <span class="v" id="costNora">Rs 0.00</span>
     </div>
     <div>
       <span class="k">Petrol car
-        <span class="rate">Rs
-        <button class="rateBtn" id="ratePetrolBtn" type="button" title="Edit rate"
-                aria-label="Edit the petrol car rate, rupees per kilometre">
-          <span id="ratePetrolText">20</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3 21l3.9-.9L19.5 7.5l-3-3L3.9 17.1 3 21z"/>
-            <path d="M17.9 3.1l3 3 1.2-1.2a1.9 1.9 0 0 0 0-2.7 1.9 1.9 0 0 0-2.7 0L17.9 3.1z"/>
-          </svg>
-        </button>
-        /km</span>
+        <span class="rate">Rs <span id="ratePetrolText">20</span>/km</span>
       </span>
       <span class="v" id="costPetrol">Rs 0.00</span>
     </div>
     <div class="saved"><span class="k">Saved</span><span class="v" id="costSaved">Rs 0.00</span></div>
   </div>
-  <p class="rates">Rates are per kilometre. Click one to change it.</p>
+  <p class="rates">Rates are per kilometre. Change them in settings.</p>
 </div>
 
 
@@ -256,22 +251,41 @@
   </div>
 </div>
 
-<div class="modal" id="ratesSheet" hidden>
-  <div class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="ratesTitle">
-    <div class="sheetHead">
-      <span id="ratesTitle">Running cost</span>
-      <button class="btn" id="ratesCancel" type="button">Cancel</button>
-    </div>
+<!-- First run after installing: there is no way past this. -->
+<div class="modal" id="setupSheet" hidden>
+  <div class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+    <div class="sheetHead"><span id="setupTitle">Set an admin password</span></div>
     <div class="sheetBody">
-      <label for="rateNora">Nora, rupees per kilometre</label>
-      <input type="number" id="rateNora" min="0" max="999" step="0.05">
+      <p class="note">The settings are kept behind this password. Driving does
+        not need it. Choose something you will remember: there is no way to
+        recover it.</p>
 
-      <label for="ratePetrol">Petrol car, rupees per kilometre</label>
-      <input type="number" id="ratePetrol" min="0" max="999" step="0.5">
+      <label for="pwNew">Password</label>
+      <input type="password" id="pwNew" autocomplete="new-password">
+
+      <label for="pwAgain">Password again</label>
+      <input type="password" id="pwAgain" autocomplete="new-password">
     </div>
     <div class="sheetFoot">
-      <span class="status" id="ratesStatus" style="margin:0"></span>
-      <button class="btn primary" id="ratesSave" type="button">Save</button>
+      <span class="status" id="setupStatus" style="margin:0"></span>
+      <button class="btn primary" id="setupSave" type="button">Set password</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="unlockSheet" hidden>
+  <div class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="unlockTitle">
+    <div class="sheetHead">
+      <span id="unlockTitle">Admin password</span>
+      <button class="btn" id="unlockCancel" type="button">Cancel</button>
+    </div>
+    <div class="sheetBody">
+      <label for="pwCheck">Password needed to change settings</label>
+      <input type="password" id="pwCheck" autocomplete="current-password">
+    </div>
+    <div class="sheetFoot">
+      <span class="status" id="unlockStatus" style="margin:0"></span>
+      <button class="btn primary" id="unlockGo" type="button">Unlock</button>
     </div>
   </div>
 </div>
