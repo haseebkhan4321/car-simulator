@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' data: https://fonts.gstatic.com;
+  img-src 'self' data: blob: https://tiles.openfreemap.org;
+  connect-src 'self' data: blob: https://tiles.openfreemap.org https://nominatim.openstreetmap.org https://router.project-osrm.org;
+  worker-src 'self' blob:;
+  child-src 'self' blob:;
+  object-src 'none';
+  base-uri 'none';
+  form-action 'none';
+">
+<title>Nora in Lahore</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="vendor/maplibre-gl.css" rel="stylesheet">
+<link href="styles.css" rel="stylesheet">
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="panel" id="panel">
+  <div class="modes">
+    <button class="btn mode on" id="modeRoute">Nora self-drives</button>
+    <button class="btn mode" id="modeManual">You drive</button>
+  </div>
+
+  <div class="wheelWrap">
+    <div class="glow" id="wheelGlow" aria-hidden="true"></div>
+    <div class="wheel auto" id="wheel" role="slider" tabindex="0"
+         aria-label="Steering" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0">
+      <!-- Flat-bottomed, three spokes, thumb grips at nine and three.
+           The rim is one path drawn four times over: a dark shadow to
+           sit it off the panel, the face, a lit lip along the top left,
+           and stitching. -->
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <defs>
+          <linearGradient id="rimFace" x1="0" y1="0" x2="0.25" y2="1">
+            <stop offset="0"    stop-color="#616F82"/>
+            <stop offset="0.45" stop-color="#3C4756"/>
+            <stop offset="1"    stop-color="#222A34"/>
+          </linearGradient>
+          <linearGradient id="rimLip" x1="0.1" y1="0" x2="0.9" y2="1">
+            <stop offset="0"    stop-color="#9AA9BC" stop-opacity="0.9"/>
+            <stop offset="0.45" stop-color="#9AA9BC" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="spokeFace" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#515E6F"/>
+            <stop offset="1" stop-color="#262E39"/>
+          </linearGradient>
+          <radialGradient id="hubFace" cx="0.36" cy="0.28" r="0.92">
+            <stop offset="0"   stop-color="#414D5D"/>
+            <stop offset="0.7" stop-color="#232B36"/>
+            <stop offset="1"   stop-color="#181E25"/>
+          </radialGradient>
+        </defs>
+
+        <!-- rim -->
+        <path d="M30.7,98 A48,48 0 1 1 89.3,98 Q60,108 30.7,98"
+              fill="none" stroke="#0C1015" stroke-width="17.5" stroke-linejoin="round"/>
+        <path d="M30.7,98 A48,48 0 1 1 89.3,98 Q60,108 30.7,98"
+              fill="none" stroke="url(#rimFace)" stroke-width="13"/>
+
+        <!-- thumb grips, drawn thicker over the rim -->
+        <path d="M16.5,80.3 A48,48 0 0 1 16.5,39.7"
+              fill="none" stroke="url(#rimFace)" stroke-width="19" stroke-linecap="round"/>
+        <path d="M103.5,39.7 A48,48 0 0 1 103.5,80.3"
+              fill="none" stroke="url(#rimFace)" stroke-width="19" stroke-linecap="round"/>
+
+        <path d="M30.7,98 A48,48 0 1 1 89.3,98 Q60,108 30.7,98"
+              fill="none" stroke="url(#rimLip)" stroke-width="2.6"/>
+        <path d="M30.7,98 A48,48 0 1 1 89.3,98 Q60,108 30.7,98"
+              fill="none" stroke="#0D1218" stroke-width="1" stroke-dasharray="2 3.4"
+              opacity="0.45"/>
+
+        <!-- spokes, tapering out to the rim -->
+        <path d="M44,55.2 L24.5,57 Q19.2,57.6 19.2,60 Q19.2,62.4 24.5,63 L44,64.8 Z"
+              fill="url(#spokeFace)"/>
+        <path d="M76,55.2 L95.5,57 Q100.8,57.6 100.8,60 Q100.8,62.4 95.5,63 L76,64.8 Z"
+              fill="url(#spokeFace)"/>
+        <path d="M55.9,74 L57.1,93.5 Q57.4,98.6 60,98.6 Q62.6,98.6 62.9,93.5 L64.1,74 Z"
+              fill="url(#spokeFace)"/>
+
+        <!-- switchgear on the crossbar -->
+        <rect x="26.5" y="55.6" width="13" height="8.8" rx="3.1"
+              fill="#1A212A" stroke="#48545F" stroke-width="0.9"/>
+        <rect x="31" y="57.6" width="4" height="4.8" rx="1.5" fill="#57636F"/>
+        <rect x="80.5" y="55.6" width="13" height="8.8" rx="3.1"
+              fill="#1A212A" stroke="#48545F" stroke-width="0.9"/>
+        <rect x="85" y="57.6" width="4" height="4.8" rx="1.5" fill="#57636F"/>
+
+        <!-- hub -->
+        <circle cx="60" cy="60" r="17.6" fill="url(#hubFace)"
+                stroke="#48545F" stroke-width="1.9"/>
+        <circle cx="60" cy="60" r="12.6" fill="#1B222B" opacity="0.72"/>
+        <path d="M47,61.5 Q60,67.5 73,61.5" fill="none" stroke="#0D1218"
+              stroke-width="0.8" opacity="0.5"/>
+        <text x="60" y="62.6" text-anchor="middle" font-size="8.4" font-weight="600"
+              letter-spacing="0.6" fill="#F0A028"
+              font-family="IBM Plex Sans, sans-serif">NORA</text>
+
+        <!-- straight-ahead marker -->
+        <circle cx="60" cy="16" r="7.5" fill="#F0A028" opacity="0.14"/>
+        <rect x="56.2" y="9.6" width="7.6" height="12.6" rx="3.4" fill="#F0A028"/>
+      </svg>
+    </div>
+  </div>
+  <p class="hint" id="wheelCaption">Nora is steering</p>
+
+  <div id="routeUI">
+    <label for="from">Start</label>
+    <div class="field">
+      <input type="text" id="from" value="Badshahi Mosque, Lahore">
+      <button class="pin" type="button" id="pinFrom" title="Pick on the map" aria-label="Pick the start on the map">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.6A2.6 2.6 0 1 1 12 6.4a2.6 2.6 0 0 1 0 5.2z"/>
+        </svg>
+      </button>
+    </div>
+
+    <label for="to">Destination</label>
+    <div class="field">
+      <input type="text" id="to" value="Gaddafi Stadium, Lahore">
+      <button class="pin" type="button" id="pinTo" title="Pick on the map" aria-label="Pick the destination on the map">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.6A2.6 2.6 0 1 1 12 6.4a2.6 2.6 0 0 1 0 5.2z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="row">
+      <button class="btn primary" id="build">Build route</button>
+      <span class="status" id="status" style="margin:0"></span>
+    </div>
+
+    <div class="rule"></div>
+
+    <div class="row">
+      <button class="btn" id="play" disabled>Drive</button>
+      <button class="btn" id="reset" disabled>Reset</button>
+    </div>
+  </div>
+
+  <div class="rule"></div>
+
+  <div class="row">
+    <div class="speed">
+      <label for="speed">Speed <span id="speedLabel">50 km/h</span></label>
+      <input type="range" id="speed" min="10" max="120" step="5" value="50">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="speed">
+      <label for="zoom">Zoom <span id="zoomLabel">20</span></label>
+      <input type="range" id="zoom" min="15" max="20" step="0.5" value="20">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="speed">
+      <label for="volume">Sound <span id="volumeLabel">60%</span></label>
+      <input type="range" id="volume" min="0" max="100" step="5" value="60">
+    </div>
+  </div>
+
+</div>
+
+<div class="panel" id="stats">
+  <div class="readout">
+    <span class="big" id="dist">0.00 km</span>
+    <span class="sub" id="total">of 0.00 km</span>
+  </div>
+  <div class="track"><span id="bar"></span></div>
+
+  <div class="cost">
+    <div class="nora"><span class="k">Nora</span><span class="v" id="costNora">Rs 0.00</span></div>
+    <div><span class="k">Petrol car</span><span class="v" id="costPetrol">Rs 0.00</span></div>
+    <div class="saved"><span class="k">Saved</span><span class="v" id="costSaved">Rs 0.00</span></div>
+  </div>
+  <p class="rates">Nora Rs 3.95/km against Rs 20.00/km for a petrol car.</p>
+</div>
+
+
+<div class="modal" id="picker" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+    <div class="sheetHead">
+      <span id="pickerTitle">Pick the start</span>
+      <button class="btn" id="pickClose" type="button">Cancel</button>
+    </div>
+    <div id="pickMap"></div>
+    <div class="sheetFoot">
+      <span class="status" id="pickStatus" style="margin:0">Click anywhere in Lahore to drop a pin.</span>
+      <button class="btn primary" id="pickUse" type="button" disabled>Use this point</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="car-model.js"></script>
+<script src="sound.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

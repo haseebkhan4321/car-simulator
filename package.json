@@ -1,0 +1,59 @@
+{
+  "name": "car-simulator-2d",
+  "productName": "Nora in Lahore",
+  "version": "1.0.0",
+  "description": "A car you drive across Lahore on OpenStreetMap data, as a desktop app.",
+  "main": "main.js",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "dev": "node scripts/start.js --enable-logging",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.rareos.nora-lahore",
+    "productName": "Nora in Lahore",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "!**/*.map"
+    ],
+    "mac": {
+      "category": "public.app-category.simulation-games",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Game"
+    }
+  },
+  "allowScripts": {
+    "electron@32.3.3": true
+  }
+}

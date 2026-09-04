@@ -1,0 +1,190 @@
+:root{
+  --ink:      #0E1217;
+  --panel:    #151A21;
+  --line:     #262E38;
+  --text:     #E7ECF2;
+  --muted:    #8B95A3;
+  --amber:    #F0A028;
+  --amber-dim:#7A5416;
+  --radius:   10px;
+}
+
+*{ box-sizing:border-box; }
+
+html,body{
+  height:100%; margin:0;
+  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  background:var(--ink); color:var(--text);
+}
+
+#map{ position:absolute; inset:0; }
+
+.panel{
+  position:absolute; z-index:5;
+  width:330px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:0 10px 34px rgba(0,0,0,.45);
+  padding:16px;
+}
+
+/* The controls sit bottom left, the trip readout top right. */
+#panel{ left:16px; bottom:16px; }
+#stats{ right:16px; top:16px; width:296px; }
+#stats .readout{ margin-top:0; }
+
+label{ display:block; font-size:12px; color:var(--muted); margin:0 0 4px; }
+
+/* An address field and its map-picker button, side by side. */
+.field{ display:flex; gap:6px; align-items:stretch; margin-bottom:9px; }
+.field input[type=text]{ margin-bottom:0; }
+
+.pin{
+  flex:0 0 auto; width:36px;
+  display:grid; place-items:center;
+  background:#1D242D; color:var(--muted);
+  border:1px solid var(--line); border-radius:6px;
+  cursor:pointer; padding:0;
+}
+.pin svg{ width:17px; height:17px; fill:currentColor; }
+.pin:hover{ background:#232B36; color:var(--text); }
+.pin:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+.pin.set{ color:var(--amber); border-color:var(--amber-dim); }
+
+input[type=text]{
+  width:100%; padding:8px 10px; margin-bottom:9px;
+  background:#0E1319; color:var(--text);
+  border:1px solid var(--line); border-radius:6px;
+  font:inherit; font-size:13px;
+}
+input[type=text]:focus{ outline:2px solid var(--amber); outline-offset:1px; border-color:transparent; }
+
+.btn{
+  font:inherit; font-size:13px; font-weight:500;
+  padding:8px 14px; border-radius:6px; cursor:pointer;
+  border:1px solid var(--line); background:#1D242D; color:var(--text);
+}
+.btn:hover{ background:#232B36; }
+.btn:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+.btn.primary{ background:var(--amber); border-color:var(--amber); color:#1B1204; }
+.btn.primary:hover{ background:#FFB03C; }
+.btn:disabled{ opacity:.4; cursor:default; }
+
+.row{ display:flex; gap:8px; align-items:center; }
+.row + .row{ margin-top:10px; }
+.rule{ height:1px; background:var(--line); margin:14px 0; }
+
+.speed{ flex:1; }
+.speed input{ width:100%; accent-color:var(--amber); }
+
+.readout{ display:flex; justify-content:space-between; align-items:baseline; margin-top:12px; }
+.readout .big{ font-size:26px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+.readout .sub{ font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+.track{ height:3px; background:var(--line); border-radius:2px; margin-top:10px; overflow:hidden; }
+.track span{ display:block; height:100%; width:0; background:var(--amber); }
+
+.status{ font-size:12px; color:var(--muted); margin-top:10px; min-height:1em; }
+.status.error{ color:#FF8B6B; }
+
+.modes{ display:flex; gap:6px; margin-bottom:14px; }
+.mode{ flex:1; padding:7px 4px; font-size:12px; }
+.mode.on{ background:var(--amber-dim); border-color:var(--amber); color:#FFD79A; }
+
+/* ---------- steering wheel ---------- */
+
+.wheelWrap{ display:flex; justify-content:center; padding:2px 0 10px; position:relative; }
+.wheel{
+  position:relative; z-index:1;
+  width:132px; height:132px; cursor:grab;
+  touch-action:none; user-select:none;
+  transition:filter .15s;
+}
+.wheel:active{ cursor:grabbing; }
+.wheel.auto{ cursor:default; pointer-events:none; opacity:.92; }
+.wheel.turning{ filter:drop-shadow(0 0 9px rgba(240,160,40,.4)); }
+.wheel svg{ display:block; width:100%; height:100%; }
+
+/* Throttle and brake, lit from behind the wheel: green for power, red
+   for the brake. The wheel's SVG is mostly holes, so the halo reads
+   through the spokes instead of sitting on top of them. */
+.glow{
+  position:absolute; z-index:0; top:50%; left:50%;
+  width:210px; height:210px; margin:-109px 0 0 -105px;
+  border-radius:50%; pointer-events:none;
+  /* No box-shadow: a shadow is a solid shape with a blurred edge, and
+     the edge reads as a drawn circle. This is a gradient that reaches
+     zero well inside its own box, blurred on top, so it has no edge to
+     see at all. Opacity and scale come from the frame loop, off road
+     speed. */
+  opacity:0;
+  filter:blur(13px);
+  transition:opacity .12s ease, transform .12s ease;
+}
+.glow.go{
+  background:radial-gradient(circle closest-side,
+    rgba(70,214,134,.50) 0%,
+    rgba(70,214,134,.26) 36%,
+    rgba(70,214,134,.07) 60%,
+    rgba(70,214,134,0)   78%);
+}
+.glow.stop{
+  background:radial-gradient(circle closest-side,
+    rgba(226,75,74,.54) 0%,
+    rgba(226,75,74,.28) 36%,
+    rgba(226,75,74,.08) 60%,
+    rgba(226,75,74,0)   78%);
+}
+
+.hint{ font-size:12px; color:var(--muted); text-align:center; margin:10px 0 0; }
+[hidden]{ display:none !important; }
+
+/* ---------- running cost ---------- */
+
+.cost{ margin-top:14px; border-top:1px solid var(--line); padding-top:11px; }
+.cost div{ display:flex; justify-content:space-between; align-items:baseline; padding:2px 0; }
+.cost .k{ font-size:12px; color:var(--muted); }
+.cost .v{ font-size:13px; font-variant-numeric:tabular-nums; }
+.cost .nora .k, .cost .nora .v{ color:var(--amber); }
+.cost .saved{ border-top:1px solid var(--line); margin-top:7px; padding-top:8px; }
+.cost .saved .k{ color:var(--text); }
+.cost .saved .v{ font-size:15px; font-weight:600; color:#5FCB8B; }
+.rates{ font-size:11px; color:var(--muted); margin:8px 0 0; line-height:1.5; }
+
+.car{ width:30px; height:48px; }
+.car svg{ display:block; filter:drop-shadow(0 3px 5px rgba(0,0,0,.45)); }
+
+/* ---------- map picker ---------- */
+
+.modal{
+  position:absolute; inset:0; z-index:20;
+  display:grid; place-items:center;
+  background:rgba(6,9,13,.62);
+  padding:20px;
+}
+.sheet{
+  width:min(780px, 100%); max-height:100%;
+  display:flex; flex-direction:column;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:0 18px 60px rgba(0,0,0,.6);
+  overflow:hidden;
+}
+.sheetHead, .sheetFoot{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:12px 14px;
+}
+.sheetHead{ border-bottom:1px solid var(--line); font-size:14px; font-weight:500; }
+.sheetFoot{ border-top:1px solid var(--line); }
+#pickMap{ height:min(52vh, 430px); }
+#pickMap .maplibregl-canvas{ cursor:crosshair; }
+
+.maplibregl-ctrl-attrib{ font-size:11px; }
+
+@media (max-width:560px){
+  .panel{ left:8px; right:8px; width:auto; }
+  #panel{ bottom:8px; }
+  #stats{ top:8px; }
+}
