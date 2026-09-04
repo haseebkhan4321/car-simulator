@@ -1440,10 +1440,10 @@ function trimRate(n){
   return String(Number(n.toFixed(2)));
 }
 
-/* The panel shows the figures and nothing else. */
+/* The cost rows show money and nothing else. Where the rates are is
+   settings, and what they do to the total is the working behind the
+   info link. */
 function showRates(){
-  $("rateNoraText").textContent   = trimRate(rateNora);
-  $("ratePetrolText").textContent = trimRate(ratePetrol);
   updateCost(distanceSoFar());
 }
 

@@ -201,15 +201,6 @@ input[type=text]:focus, input[type=number]:focus, input[type=password]:focus{
 .cost.formula{ margin-top:0; border-top:0; padding-top:0; }
 .cost.formula .k{ font-variant-numeric:tabular-nums; }
 
-/* The rates are live inputs dressed as text: they look like part of the
-   label until you hover or focus one, so the row still reads as a
-   figure rather than a form. */
-.cost .rate{ font-size:11px; color:var(--muted); white-space:nowrap; }
-.cost .nora .rate{ color:var(--amber); opacity:.8; }
-/* The rates are entered in the settings popover, so they are read-only
-   figures here. */
-.cost .rate{ font-size:11px; }
-
 .car{ width:30px; height:48px; }
 .car svg{ display:block; filter:drop-shadow(0 3px 5px rgba(0,0,0,.45)); }
 
