@@ -1278,27 +1278,73 @@ function distanceSoFar(){
   return mode === "manual" ? odometer : travelled;
 }
 
-function readRate(id, fallback){
-  const value = Number($(id).value);
-  return Number.isFinite(value) && value >= 0 ? value : fallback;
+/* 3.95 stays 3.95; 20 shows as 20 rather than 20.00. */
+function trimRate(n){
+  return String(Number(n.toFixed(2)));
 }
 
-function applyRates(){
-  rateNora   = readRate("rateNora", rateNora);
-  ratePetrol = readRate("ratePetrol", ratePetrol);
+/* The panel shows the figures and nothing else. */
+function showRates(){
+  $("rateNoraText").textContent   = trimRate(rateNora);
+  $("ratePetrolText").textContent = trimRate(ratePetrol);
   updateCost(distanceSoFar());
 }
 
+function savedRate(id, fallback){
+  try{
+    const saved = Number(localStorage.getItem(id));
+    if(Number.isFinite(saved) && saved >= 0) return saved;
+  }catch{ /* no storage here; the default stands */ }
+  return fallback;
+}
+
 function restoreRates(){
-  for(const [id, fallback] of [["rateNora", 3.95], ["ratePetrol", 20.00]]){
-    let value = fallback;
-    try{
-      const saved = Number(localStorage.getItem(id));
-      if(Number.isFinite(saved) && saved >= 0) value = saved;
-    }catch{ /* no storage here; the default stands */ }
-    $(id).value = value;
+  rateNora   = savedRate("rateNora", 3.95);
+  ratePetrol = savedRate("ratePetrol", 20.00);
+  showRates();
+}
+
+/* Entering a rate happens in the popup, never on the panel. Both boxes
+   open holding the rate already in use, so a change starts from the
+   previous value rather than from an empty field. */
+function openRates(focus){
+  $("rateNora").value   = trimRate(rateNora);
+  $("ratePetrol").value = trimRate(ratePetrol);
+  $("ratesStatus").textContent = "";
+  $("ratesStatus").classList.remove("error");
+  $("ratesSheet").hidden = false;
+  const el = $(focus === "ratePetrol" ? "ratePetrol" : "rateNora");
+  el.focus();
+  el.select();
+  logAction("rate", "open");
+}
+
+function closeRates(){
+  $("ratesSheet").hidden = true;
+}
+
+function saveRates(){
+  const nora   = Number($("rateNora").value);
+  const petrol = Number($("ratePetrol").value);
+
+  const ok = v => Number.isFinite(v) && v >= 0;
+  if(!ok(nora) || !ok(petrol)){
+    $("ratesStatus").textContent = "Both rates need a number, zero or more.";
+    $("ratesStatus").classList.add("error");
+    return;
   }
-  applyRates();
+
+  rateNora   = nora;
+  ratePetrol = petrol;
+  try{
+    localStorage.setItem("rateNora", String(nora));
+    localStorage.setItem("ratePetrol", String(petrol));
+  }catch{ /* fine without it, until the next launch */ }
+
+  logAction("rate", "Nora Rs " + trimRate(nora)
+                    + "/km, petrol Rs " + trimRate(petrol) + "/km");
+  showRates();
+  closeRates();
 }
 
 function restoreVolume(){
@@ -1331,16 +1377,15 @@ function wireControls(){
     draw();
   });
 
-  ["rateNora", "ratePetrol"].forEach(id => {
-    $(id).addEventListener("input", applyRates);
-    $(id).addEventListener("change", () => {
-      applyRates();
-      $(id).value = id === "rateNora" ? rateNora : ratePetrol;   // reject junk
-      try{ localStorage.setItem(id, $(id).value); }catch{ /* fine without it */ }
-      logAction("rate", (id === "rateNora" ? "Nora" : "petrol")
-                        + " Rs " + $(id).value + "/km");
-    });
+  $("rateNoraBtn").addEventListener("click", () => openRates("rateNora"));
+  $("ratePetrolBtn").addEventListener("click", () => openRates("ratePetrol"));
+  $("ratesSave").addEventListener("click", saveRates);
+  $("ratesCancel").addEventListener("click", closeRates);
+  $("ratesSheet").addEventListener("click", e => {
+    if(e.target === $("ratesSheet")) closeRates();
   });
+  ["rateNora", "ratePetrol"].forEach(id =>
+    $(id).addEventListener("keydown", e => { if(e.key === "Enter") saveRates(); }));
 
   $("speed").addEventListener("change", e =>
     logAction("settings", "speed " + e.target.value + " km/h"));
@@ -1387,6 +1432,7 @@ function wireControls(){
   addEventListener("keydown", e => {
     if(e.key !== "Escape") return;
     if(!$("logSheet").hidden) closeLog();
+    else if(!$("ratesSheet").hidden) closeRates();
     else if(!$("picker").hidden) closePicker();
     else toggleSettings(false);
   });

@@ -208,21 +208,37 @@
   <div class="cost">
     <div class="nora">
       <span class="k">Nora
-        <span class="rate">Rs <input type="number" id="rateNora" min="0" max="999"
-              step="0.05" value="3.95" aria-label="Nora, rupees per kilometre">/km</span>
+        <span class="rate">Rs
+        <button class="rateBtn" id="rateNoraBtn" type="button" title="Edit rate"
+                aria-label="Edit the Nora rate, rupees per kilometre">
+          <span id="rateNoraText">3.95</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 21l3.9-.9L19.5 7.5l-3-3L3.9 17.1 3 21z"/>
+            <path d="M17.9 3.1l3 3 1.2-1.2a1.9 1.9 0 0 0 0-2.7 1.9 1.9 0 0 0-2.7 0L17.9 3.1z"/>
+          </svg>
+        </button>
+        /km</span>
       </span>
       <span class="v" id="costNora">Rs 0.00</span>
     </div>
     <div>
       <span class="k">Petrol car
-        <span class="rate">Rs <input type="number" id="ratePetrol" min="0" max="999"
-              step="0.5" value="20" aria-label="Petrol car, rupees per kilometre">/km</span>
+        <span class="rate">Rs
+        <button class="rateBtn" id="ratePetrolBtn" type="button" title="Edit rate"
+                aria-label="Edit the petrol car rate, rupees per kilometre">
+          <span id="ratePetrolText">20</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 21l3.9-.9L19.5 7.5l-3-3L3.9 17.1 3 21z"/>
+            <path d="M17.9 3.1l3 3 1.2-1.2a1.9 1.9 0 0 0 0-2.7 1.9 1.9 0 0 0-2.7 0L17.9 3.1z"/>
+          </svg>
+        </button>
+        /km</span>
       </span>
       <span class="v" id="costPetrol">Rs 0.00</span>
     </div>
     <div class="saved"><span class="k">Saved</span><span class="v" id="costSaved">Rs 0.00</span></div>
   </div>
-  <p class="rates">Click either rate to change it.</p>
+  <p class="rates">Rates are per kilometre. Click one to change it.</p>
 </div>
 
 
@@ -236,6 +252,26 @@
     <div class="sheetFoot">
       <span class="status" id="pickStatus" style="margin:0">Click anywhere in Lahore to drop a pin.</span>
       <button class="btn primary" id="pickUse" type="button" disabled>Use this point</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="ratesSheet" hidden>
+  <div class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="ratesTitle">
+    <div class="sheetHead">
+      <span id="ratesTitle">Running cost</span>
+      <button class="btn" id="ratesCancel" type="button">Cancel</button>
+    </div>
+    <div class="sheetBody">
+      <label for="rateNora">Nora, rupees per kilometre</label>
+      <input type="number" id="rateNora" min="0" max="999" step="0.05">
+
+      <label for="ratePetrol">Petrol car, rupees per kilometre</label>
+      <input type="number" id="ratePetrol" min="0" max="999" step="0.5">
+    </div>
+    <div class="sheetFoot">
+      <span class="status" id="ratesStatus" style="margin:0"></span>
+      <button class="btn primary" id="ratesSave" type="button">Save</button>
     </div>
   </div>
 </div>

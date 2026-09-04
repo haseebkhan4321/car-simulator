@@ -188,20 +188,31 @@ input[type=text]:focus{ outline:2px solid var(--amber); outline-offset:1px; bord
    figure rather than a form. */
 .cost .rate{ font-size:11px; color:var(--muted); white-space:nowrap; }
 .cost .nora .rate{ color:var(--amber); opacity:.8; }
-.cost .rate input{
-  width:44px; padding:1px 3px; margin:0;
-  background:transparent; color:inherit;
-  border:1px solid transparent; border-radius:4px;
-  font:inherit; text-align:right;
-  font-variant-numeric:tabular-nums;
-  appearance:none; -webkit-appearance:none;
+/* The rate reads as text with a pencil beside it. Clicking either puts
+   an input in its place, already holding the value in use. */
+.rateBtn{
+  display:inline-flex; align-items:center; gap:3px;
+  background:none; border:0; padding:0; margin:0;
+  font:inherit; color:inherit; cursor:pointer; border-radius:3px;
 }
-.cost .rate input::-webkit-inner-spin-button,
-.cost .rate input::-webkit-outer-spin-button{ -webkit-appearance:none; margin:0; }
-.cost .rate input:hover{ border-color:var(--line); background:#0E1319; }
-.cost .rate input:focus{
-  outline:2px solid var(--amber); outline-offset:0;
-  border-color:transparent; background:#0E1319;
+.rateBtn svg{ width:10px; height:10px; fill:currentColor; opacity:.65; }
+.rateBtn:hover{ color:var(--text); }
+.cost .nora .rateBtn:hover{ color:#FFB03C; }
+.rateBtn:hover svg{ opacity:1; }
+.rateBtn:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+
+/* The popup the pencil opens. */
+.sheet.narrow{ width:min(360px, 100%); }
+.sheetBody{ padding:14px 16px 4px; }
+.sheetBody input[type=number]{
+  width:100%; padding:8px 10px; margin:0 0 12px;
+  background:#0E1319; color:var(--text);
+  border:1px solid var(--line); border-radius:6px;
+  font:inherit; font-size:13px;
+  font-variant-numeric:tabular-nums;
+}
+.sheetBody input[type=number]:focus{
+  outline:2px solid var(--amber); outline-offset:1px; border-color:transparent;
 }
 
 .car{ width:30px; height:48px; }
