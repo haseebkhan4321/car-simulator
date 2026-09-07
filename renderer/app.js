@@ -34,7 +34,8 @@ let frameDt = 1 / 60;   // length of the frame being drawn, in seconds
 
 let mode = "route";
 let carPos = null, carDir = 0, carSpeed = 0, odometer = 0;
-const held = { f:false, b:false, l:false, r:false };
+const held    = { f:false, b:false, l:false, r:false };  // either source
+const keyHeld = { f:false, b:false, l:false, r:false };  // the keyboard's share
 
 const REVERSE_CAP = 8;
 const ACCEL = 11, BRAKE = 22, COAST = 5, TURN_RATE = 105;
@@ -44,6 +45,8 @@ const ACCEL = 11, BRAKE = 22, COAST = 5, TURN_RATE = 105;
    than constants. */
 let rateNora   = 3.95;
 let ratePetrol = 20.00;
+const DEFAULT_NAME = "Nora";
+let carName = DEFAULT_NAME;    // what the panel calls the car; set in settings
 
 /* The wheel is two things at once. steerCmd is the instruction, set by
    your hand or the arrow keys, running from -1 to 1. wheelAngle is the
@@ -111,6 +114,12 @@ const ROAD_CLASSES = new Set([
 const CELL       = 0.0025;  // grid cell, roughly 250 m
 const SNAP_LIMIT = 14;      // metres you may stray before the road refuses you
 const ROAD_GRIP  = 6;       // how hard the road pulls the nose straight, per second
+const STEER_HOLD = 1.75;    // the least of it the wheel at full lock can leave, per
+                            // second: enough to lean sixty degrees, never to flip round
+const UTURN_SPEED  = REVERSE_CAP;  // m/s; as fast as you can reverse. Slower than this the
+                                   // road lets you leave it to turn round
+const UTURN_MARGIN = 6;     // extra metres off the road you may go while that slow
+const UTURN_HOLD   = 0.3;   // share of the road's pull on the car that stays on while slow
 
 let roadCells = new Map();
 let roadsReady = false;
@@ -981,6 +990,8 @@ function draw(){
 /* --------------------------- driving --------------------------- */
 
 function steer(dt){
+  pollPad();
+
   if(held.f)      carSpeed += ACCEL * dt;
   else if(held.b) carSpeed -= BRAKE * dt;
   else {
@@ -997,6 +1008,8 @@ function steer(dt){
     steerCmd = Math.max(-1, steerCmd - WHEEL_KEY * dt);
   } else if(held.r){
     steerCmd = Math.min( 1, steerCmd + WHEEL_KEY * dt);
+  } else if(padSteer !== null){
+    steerCmd = padSteer;
   } else {
     const back = WHEEL_RETURN * dt;
     steerCmd = Math.abs(steerCmd) <= back ? 0 : steerCmd - Math.sign(steerCmd) * back;
@@ -1019,7 +1032,14 @@ function steer(dt){
     return;
   }
 
-  const snap = nearestRoad(wanted, SNAP_LIMIT);
+  // Crawl and the road eases its grip: it stops straightening the nose,
+  // so you can turn round, and it pulls the car back to the line only
+  // gently, so the turn swings a few metres wide rather than pivoting on
+  // the spot. Over the next four metres a second it takes hold again, and
+  // above that holds the car as firmly as ever, so keeping the wheel over
+  // on a straight is a drift within the lane, not a spin.
+  const give = Math.max(0, Math.min(1, (Math.abs(carSpeed) - UTURN_SPEED) / 4));
+  const snap = nearestRoad(wanted, SNAP_LIMIT + UTURN_MARGIN * (1 - give));
 
   if(!snap){
     // Driving fast can outrun the tiles, so a missing road may just mean a
@@ -1033,14 +1053,23 @@ function steer(dt){
     return;
   }
 
-  carPos = mix(wanted, snap.point, ease(SNAP_PULL, dt));
+  const pull = SNAP_PULL * (UTURN_HOLD + (1 - UTURN_HOLD) * give);
+  carPos = mix(wanted, snap.point, ease(pull, dt));
   odometer += Math.abs(step);
 
   // Point the car along the road. A road runs both ways, so take whichever
-  // end of it the car is already closer to facing.
+  // end of it the car is already closer to facing. The wheel loosens the
+  // road's hold on the nose, down to STEER_HOLD at full lock, so you can
+  // lean towards a side road long enough for it to become the road you
+  // are on; let go and the road takes over again. Slow enough for the
+  // U-turn rule to have loosened it further already, the wheel changes
+  // nothing.
   let along = snap.bearing;
   if(Math.abs(turnTowards(carDir, along)) > 90) along = (along + 180) % 360;
-  carDir = (carDir + turnTowards(carDir, along) * ease(ROAD_GRIP, dt) + 360) % 360;
+  const full  = ROAD_GRIP * give;
+  const least = Math.min(full, STEER_HOLD);
+  const hold  = least + (full - least) * (1 - Math.abs(steerCmd));
+  carDir = (carDir + turnTowards(carDir, along) * ease(hold, dt) + 360) % 360;
 }
 
 function frame(now){
@@ -1108,7 +1137,7 @@ function setMode(next){
   if(mode === next) return;
   stop();
   mode = next;
-  logAction("mode", next === "route" ? "Nora self-drives" : "you drive");
+  logAction("mode", next === "route" ? carName + " self-drives" : "you drive");
 
   $("modeRoute").classList.toggle("on", next === "route");
   $("modeManual").classList.toggle("on", next === "manual");
@@ -1116,7 +1145,8 @@ function setMode(next){
 
   camCentre = null;
   camBearing = null;
-  Object.keys(held).forEach(k => held[k] = false);
+  letGoOfPad();
+  for(const k of Object.keys(held)) held[k] = keyHeld[k] = false;
   showGlow();
   dragging = false;
   wheelAngle = 0;
@@ -1125,7 +1155,7 @@ function setMode(next){
   prevHeading = null;
   $("wheel").classList.toggle("auto", next === "route");
   $("wheelCaption").textContent = next === "route"
-    ? "Nora is steering"
+    ? carName + " is steering"
     : "Drag to steer. Up and down arrows drive.";
   showWheel();
 
@@ -1168,9 +1198,77 @@ function setMode(next){
   }
 }
 
-function press(key, on){
-  if(held[key] === on) return;        // keydown repeats are not new actions
-  held[key] = on;
+/* ------------------------------------------------------------------ *
+ *  Controller. An Xbox pad, or anything else with the standard layout,
+ *  drives in manual mode beside the keys: the left stick or the pad's
+ *  arrows steer, the right trigger or A drives, the left trigger, B, or
+ *  X brakes and then reverses. Chromium keeps a pad hidden until a
+ *  button on it is pressed, so nothing is read until you do.
+ * ------------------------------------------------------------------ */
+
+const PAD_DEADZONE = 0.15;          // stick travel ignored around centre
+let padSteer = null;                // left stick, -1..1, or null when centred
+let padSeen  = null;                // id of the pad in use, for the log
+const padHeld = { f:false, b:false, l:false, r:false };  // the pad's share
+
+function activePad(){
+  if(!navigator.getGamepads) return null;
+  for(const g of navigator.getGamepads()){
+    if(g && g.connected) return g;
+  }
+  return null;
+}
+
+function padPress(key, on){
+  press(key, on, padHeld);
+}
+
+function letGoOfPad(){
+  padSteer = null;
+  for(const k of Object.keys(padHeld)) padPress(k, false);
+}
+
+/* Called every frame in manual mode. */
+function pollPad(){
+  const g = activePad();
+  if(!g){
+    if(padSeen){ padSeen = null; letGoOfPad(); }
+    return;
+  }
+  if(padSeen !== g.id){
+    padSeen = g.id;
+    logAction("input", "controller in use: " + g.id);
+    $("wheelCaption").textContent =
+      "Left stick steers. Right trigger drives, left trigger brakes.";
+  }
+
+  const btn = i => g.buttons[i] ? Math.max(g.buttons[i].value || 0, g.buttons[i].pressed ? 1 : 0) : 0;
+  padPress("f", btn(7) > 0.08 || btn(0) > 0.5 || btn(12) > 0.5);
+  padPress("b", btn(6) > 0.08 || btn(1) > 0.5 || btn(2) > 0.5 || btn(13) > 0.5);
+
+  let x = g.axes[0] || 0;
+  if(btn(14) > 0.5)      x = -1;
+  else if(btn(15) > 0.5) x = 1;
+  if(Math.abs(x) < PAD_DEADZONE){
+    padSteer = null;               // the wheel finds its own way back to straight
+    return;
+  }
+  // Past the dead zone the response curves in, so a nudge steers gently
+  // and only a stick hard over is full lock.
+  const t = (Math.abs(x) - PAD_DEADZONE) / (1 - PAD_DEADZONE);
+  padSteer = Math.sign(x) * Math.pow(t, 1.4);
+}
+
+/* The keyboard and the pad each keep their own record of what they are
+   holding, and the car sees the two combined. Letting go of a key while
+   a trigger is down therefore changes nothing, and neither does a
+   trigger released while a key is held. */
+function press(key, on, from = keyHeld){
+  if(from[key] === on) return;        // keydown repeats are not new actions
+  from[key] = on;
+  const now = keyHeld[key] || padHeld[key];
+  if(held[key] === now) return;
+  held[key] = now;
   logAction("input", { f:"throttle", b:"brake", l:"left", r:"right" }[key]
                       + (on ? " down" : " up"));
   showGlow();
@@ -1425,7 +1523,21 @@ function wirePad(){
   });
   addEventListener("blur", () => {
     dragging = false;
+    letGoOfPad();
     Object.keys(held).forEach(k => press(k, false));
+  });
+
+  addEventListener("gamepadconnected", e => {
+    logAction("input", "controller connected: " + e.gamepad.id);
+    setStatus(mode === "manual"
+      ? "Controller connected."
+      : "Controller connected. Pick You drive to use it.", false);
+  });
+  addEventListener("gamepaddisconnected", e => {
+    logAction("input", "controller disconnected: " + e.gamepad.id);
+    letGoOfPad();
+    padSeen = null;
+    setStatus("Controller disconnected.", true);
   });
 }
 
@@ -1483,7 +1595,10 @@ function closeFormula(){
 
 function savedRate(id, fallback){
   try{
-    const saved = Number(localStorage.getItem(id));
+    const raw = localStorage.getItem(id);
+    // Number(null) is 0, so a rate never saved must not read as free.
+    if(raw === null) return fallback;
+    const saved = Number(raw);
     if(Number.isFinite(saved) && saved >= 0) return saved;
   }catch{ /* no storage here; the default stands */ }
   return fallback;
@@ -1516,8 +1631,49 @@ function commitRate(id){
     return;
   }
   try{ localStorage.setItem(id, $(id).value); }catch{ /* fine without it */ }
-  logAction("rate", (id === "rateNora" ? "Nora" : "petrol")
+  logAction("rate", (id === "rateNora" ? carName : "petrol")
                     + " Rs " + $(id).value + "/km");
+}
+
+/* The car's name is the settings field next to its rate. It shows in the
+   cost row, on the rate's own label, on the self-drive button, under the
+   wheel, and on the badge in its hub, where a long name is squeezed to
+   fit rather than allowed to spill over the rim. */
+function showName(){
+  for(const el of document.querySelectorAll(".carName")) el.textContent = carName;
+  const badge = $("wheelBadge");
+  badge.textContent = carName.toUpperCase();
+  badge.setAttribute("font-size", (8.4 * Math.min(1, 4.5 / carName.length)).toFixed(1));
+  if(mode === "route") $("wheelCaption").textContent = carName + " is steering";
+}
+
+function restoreName(){
+  try{
+    const saved = (localStorage.getItem("carName") || "").trim();
+    if(saved) carName = saved.slice(0, 16);
+  }catch{ /* no storage here; the default stands */ }
+  $("carName").value = carName;
+  showName();
+}
+
+/* Follows as you type, like the rates; an emptied field falls back to the
+   default when you let go, so the car is never nameless. */
+function applyName(){
+  const value = $("carName").value.trim().slice(0, 16);
+  if(!value) return false;
+  carName = value;
+  showName();
+  return true;
+}
+
+function commitName(){
+  if(!applyName()){
+    carName = DEFAULT_NAME;
+    $("carName").value = carName;
+    showName();
+  }
+  try{ localStorage.setItem("carName", carName); }catch{ /* fine without it */ }
+  logAction("settings", "car named " + carName);
 }
 
 function restoreVolume(){
@@ -1534,6 +1690,7 @@ function restoreVolume(){
 function wireControls(){
   restoreVolume();
   restoreRates();
+  restoreName();
   $("modeRoute").addEventListener("click", () => setMode("route"));
   $("modeManual").addEventListener("click", () => setMode("manual"));
   wirePad();
@@ -1554,6 +1711,8 @@ function wireControls(){
     $(id).addEventListener("input", () => applyRate(id));
     $(id).addEventListener("change", () => commitRate(id));
   });
+  $("carName").addEventListener("input", applyName);
+  $("carName").addEventListener("change", commitName);
 
   $("speed").addEventListener("change", e =>
     logAction("settings", "speed " + e.target.value + " km/h"));
